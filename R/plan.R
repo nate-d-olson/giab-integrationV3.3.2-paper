@@ -11,23 +11,26 @@ plan <- drake_plan(
     
     ## high confidence region coverage -----------------------------------------
     ## get non-N genome and chromosome sizes 
-    # Error message - could not find function "as.workflow_data.frame"
-    # chrom_size_df = get_chrom_sizes(BSgenome.Hsapiens.1000genomes.hs37d5),
+    chrom_size_df = get_chrom_sizes(),
     
     ## get coverage by chromosome
     hc_beds = get_file_list(input, type = "hc_bed"),
-    
-    hcr_cov_df = hc_beds %>% 
-        map_dfr(get_hc_cov, bed_source = file_source, .id = "hgref"),
- 
+
+    hcr_cov_df = hc_beds %>%
+        map_dfr(get_hc_cov,
+                chrom_lengths = chrom_size_df,
+                .id = "hgref"),
+
 
     ## high confidence variants per genome
     hc_vcfs = get_file_list(input, type = "hc_vcf"),
-    
-    hc_vcf_df = hc_vcfs %>% 
+
+    hc_vcf_df = hc_vcfs %>%
         map_dfr(get_vcf_stats, vcf_type = "hc", .id = "hgref"),
-    
+
     ## high confidence variants in high confidence region per genome
     hh_vcf_df = map2_dfr(hc_vcfs, hc_beds, get_hh_stats_df, .id = "hgref"),
+
+    ## Additional Drake parameters
     strings_in_dots = "literals"
 )

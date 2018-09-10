@@ -1,6 +1,8 @@
 ## Workflow functions
 
 ## Utilities ###################################################################
+ 
+## Generate a named list of files for downstream methods
 get_file_list <- function(input_df, type){
     file_df <- dplyr::filter(input_df, file_type == type)
     as.list(file_df$file_source) %>%
@@ -42,12 +44,18 @@ get_file_path <- function(file_source){
 ## Get non-N base genome and chromosome sizes, 
 ## requires BSgenome formatted object
 
-get_chrom_sizes <- function(genome){
+get_chrom_sizes <- function(genome = "hs37d5"){
+    if (genome == "hs37d5"){
+        require(BSgenome.Hsapiens.1000genomes.hs37d5)
+        genome <- BSgenome.Hsapiens.1000genomes.hs37d5
+    } else {
+        stop("Only coded for hs37d5")
+    }
     
     get_alpha_freq <- function(i){
         genome[[i]] %>% 
             alphabetFrequency() %>% 
-            as.workflow_data.frame()
+            data.frame()
     }
     
     alpha_freq_df <- as.list(1:22) %>% 
@@ -70,8 +78,8 @@ get_chrom_sizes <- function(genome){
         mutate(len = N + non_N) %>% 
         dplyr::select(-N)
     
-    ## workflow_data frame with total length and number of non-N bases
-    workflow_data_frame(chrom = "genome", 
+    ## data frame with total length and number of non-N bases
+    data_frame(chrom = "genome", 
                non_N = sum(chromosome_lengths$non_N),
                len = sum(chromosome_lengths$len)) %>% 
         bind_rows(chromosome_lengths)
@@ -90,11 +98,13 @@ get_bed_cov_by_chrom <- function(bed_file){
     
     ## Compute bases per chromosome
     chrom_cov <- bed_df %>% 
+        ## Changing to chromosome names to chr 
+        mutate(chrom = paste0("chr", chrom)) %>% 
         group_by(chrom) %>% 
         summarise(nbases = sum(region_size))
 
-    ## NBases workflow_data frame
-    workflow_data_frame(chrom = "genome",
+    ## NBases data frame
+    data_frame(chrom = "genome",
                nbases = sum(chrom_cov$nbases)) %>% 
         bind_rows(chrom_cov)
 }
@@ -104,24 +114,34 @@ get_hc_cov <- function(bed_source, chrom_lengths){
     ## get file path
     bed_file <- get_file_path(bed_source)
     
-    cov_df <- get_chrom_cov_df(bed_file)
+    cov_df <- get_bed_cov_by_chrom(bed_file)
     
     cov_df %>% 
         ## add Chrom size and non-N base size
         left_join(chrom_lengths) %>% 
         ## Calculate coverage
-        mutate(coverage = hc_size/len,
-               coverage_nonN = hc_size/non_N)
+        mutate(coverage = nbases/len,
+               coverage_nonN = nbases/non_N)
 }
 
 ### Generating VCF stats by chromosome ######################################### 
 make_stats_df <- function(vcf_stats_dir){
-    ## TODO -----------------------------
     ## list files
-    ## read as workflow_data frame
+    stat_files <- list.files(vcf_stats_dir, full.names = TRUE) %>% 
+        set_names(str_extract(., "(?<=_stats.).*(?=.stats)"))
+    
+    ## read as data frame
+    stat_df <- stat_files %>% 
+        map_dfr(read_delim, delim = ":", 
+                trim_ws = TRUE, 
+                col_names = c("Key","Value"),
+                .id = "chrom")
+
     ## tidy
-    ## return workflow_data frame
-    workflow_data_frame()
+    ## TODO -----------------------------
+    
+    ## return data frame
+    stat_df
 }
 
 get_vcf_stats <- function(vcf_source, vcf_type){
@@ -129,7 +149,7 @@ get_vcf_stats <- function(vcf_source, vcf_type){
     
     ## Defining and creating output directory
     hgref <- str_extract(vcf_source, "HG00.")
-    vcf_stats_dir <- paste0("workflow_data/", hgref, "_", vcf_type, "_stats")
+    vcf_stats_dir <- paste0("data_workflow/", hgref, "_", vcf_type, "_stats")
     if(!dir.exists(vcf_stats_dir)) dir.create(vcf_stats_dir)
     
     system(paste('bash bash/get_vcf_chrom_stats.sh ',
@@ -137,7 +157,7 @@ get_vcf_stats <- function(vcf_source, vcf_type){
                  vcf_stats_dir),
            intern = FALSE)
     
-    ## Combine stats into a single workflow_data frame
+    ## Combine stats into a single data frame
     make_stats_df(vcf_stats_dir)
 }
 
@@ -149,8 +169,8 @@ get_hh_stats_df <- function(vcf_source, bed_source){
     
     # output directory
     hgref <- str_extract(vcf_source, "HG00.")
-    hh_var_dir <- paste0(hgref, "_", vcf_type, "_stats")
-    dir.create(paste0("workflow_data/", hh_var_dir))
+    hh_var_dir <- paste0("data_workflow/", hgref, "_hh_vcf")
+    if(!dir.exists(hh_var_dir)) dir.create(hh_var_dir)
     
     system(paste('bash bash/get_highhigh_vars.sh',
                  bed_file,
@@ -159,13 +179,7 @@ get_hh_stats_df <- function(vcf_source, bed_source){
            intern = FALSE)
     
     ## Get vcf stats by chromosome
-    hh_vcf <- file.path("workflow_data", hh_var_dir, "highhigh.vcf")
-    get_vcf_stats(h, hgref, vcf_type = "hh")
-    
-    ## Combine in to data frame
-    ## TODO
-    
-    ## empty return for testing
-    data_frame()
+    hh_vcf <- file.path(hh_var_dir, "highhigh.vcf.gz")
+    get_vcf_stats(hh_vcf, vcf_type = "hh")
 }
 

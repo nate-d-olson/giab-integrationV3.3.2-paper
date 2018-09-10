@@ -1,41 +1,9 @@
-Plan
-using drake to manage pipeline/ workflow
-
-
-using drake
-```
-library(drake)
-source("make.R")
-```
-
-Steps
-- get input data: 
-    TODO: load yml file
-- get non-N genome and chromosome sizes: 
-    get_chrom_sizes(BSgenome.Hsapiens.1000genomes.hs37d5)
-- high confidence coverage
-    - get coverage by chromosome
-        get_hc_cov(bed_source)
-    - generate data frame and save
-        TODO - combine and save
-- high confidence variants per genome
-    - variant counts and type for whole genome and chromosome
-        get_vcf_stats(vcf_source)
-    - generate data frame and save
-        TODO - combine and save
-- high confidence variants in high confidence region per genome
-    - variant counts and type for whole genome and chromosome
-        get_hh_stats_df(vcf_source, bed_source, hgref)
-    - generate data frame and save
-        TODO - combine and save
-
 Rmarkdown/ summary tables and figures
 - Whole genome summary table
 - Per chromosome summary figure
-- Reproducible anaylsis info: R version, System info, package versions, software versions (bedtools, bgzip, tabix, rtg)
+- Chinese trio analysis metrics 
+- Benchmarking summary table
+
 
 TODO
 - add md5sums to ftp download
-
-Notes
-- chrom_size_df - updates everytime the package BGenome... package is loaded
