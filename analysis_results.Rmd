@@ -1,0 +1,125 @@
+---
+title: "Integration v3.3.2 Analysis Results"
+author: "Nate Olson"
+date: "9/10/2018"
+output: html_document
+---
+
+```{r}
+library(drake)
+library(tidyverse)
+```
+
+## Objective
+Generate summary tables and figures for integration manuscript.
+
+
+
+## High confidence region coverage and variants by chromosome
+
+```{r}
+loadd(hcr_cov_df)
+loadd(hc_var_df)
+loadd(hh_var_df)
+```
+
+
+```{r}
+## Can add ti/tv, het/hom, and other stats from vcfstats
+hc_vcf_tidy <- hc_vcf_df %>% 
+    filter(Key %in% c("SNPs","Insertions","Deletions")) %>% 
+    mutate(chrom = if_else(chrom == "chr1-22", "genome", chrom),
+           Value = as.integer(Value)) %>% 
+    spread(Key, Value) %>% 
+    mutate(Indels = Insertions + Deletions)
+
+hh_vcf_tidy <- hh_vcf_df %>% 
+    filter(Key %in% c("SNPs","Insertions","Deletions")) %>% 
+    mutate(Key = paste0("hh", Key)) %>% 
+    mutate(chrom = if_else(chrom == "chr1-22", "genome", chrom),
+           Value = as.integer(Value)) %>% 
+    spread(Key, Value) %>% 
+    mutate(hhIndels = hhInsertions + hhDeletions)
+
+
+metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>% 
+    left_join(hh_vcf_tidy)
+```
+
+
+
+__Table__ Metric summary for full genome
+```{r}
+metrics_df %>% filter(chrom == "genome") %>% 
+    select(hgref, chrom, coverage_nonN, SNPs, hhSNPs, Indels, hhIndels)
+```
+
+
+```{r}
+metrics_df %>% filter(chrom != "genome") %>% 
+    ggplot() + 
+    geom_point(aes(x = chrom, y = coverage_nonN, color = hgref)) + 
+    theme_bw()
+```
+
+```{r}
+metrics_df %>% filter(chrom != "genome") %>% 
+    ggplot() + 
+    geom_point(aes(x = chrom, y = SNPs, color = hgref)) + 
+    theme_bw()
+```
+
+Figures comparing SNPs and Indels per chrom overall and for high-confidence
+
+
+## Chinese Trio Mendelian inheritance analysis
+
+Total number of violations (SNPs and Indels): 
+De novo/ germ-line somatic mutations (SNPs and Indels): 
+
+
+### Manual curation results
+
+
+## Benchmarking Results
+precisionFDA Analysis Note
+https://precision.fda.gov/notes/362-gatk4-giab-aj-and-asian-trio-benchmarking 
+
+### Updated supplemental table 2
+__TODO__  
+Columns
+    Genome
+    Type
+    Subset
+    100%-recall
+    100%-precision
+    Recall
+    Precision
+    Fraction of calls outside high_conf bed
+
+## System Information
+__TODO__
+Reproducible anaylsis info: 
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+      knitr::kable()
+```
+
+software versions (bedtools, bgzip, tabix, rtg)
+```{r}
+system("bedtools --version")
+```
+```{r}
+system("bgzip --version")
+```
+
+```{r}
+system("tabix --version")
+```
+
+```{r}
+system("rtg --version")
+```
+
