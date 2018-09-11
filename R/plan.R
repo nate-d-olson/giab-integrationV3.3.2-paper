@@ -31,6 +31,14 @@ plan <- drake_plan(
     ## high confidence variants in high confidence region per genome
     hh_vcf_df = map2_dfr(hc_vcfs, hc_beds, get_hh_stats_df, .id = "hgref"),
 
+    ## Chinese trio mendelian analysis 
+    hc_trioincon_vcf = load_trio_vcf("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz"),
+    hc_trioincon_df = get_trio_inconsistent_df(hc_trioincon_vcf),
+    hc_denovo_df = get_denovo_df(hc_trioincon_vcf, hc_trioincon_df),
+    
+    ## Benchmarking Results
+    benchmark_dat = load_benchmarking_results("data_benchmarking"),
+
     ## Additional Drake parameters
     strings_in_dots = "literals"
 )

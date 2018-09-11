@@ -161,7 +161,7 @@ get_vcf_stats <- function(vcf_source, vcf_type){
     make_stats_df(vcf_stats_dir)
 }
 
-### High confidence variants in high confidence regions
+### High confidence variants in high confidence regions ########################
 get_hh_stats_df <- function(vcf_source, bed_source){
     ## VCF bed intersect
     bed_file <- get_file_path(bed_source)
@@ -183,3 +183,49 @@ get_hh_stats_df <- function(vcf_source, bed_source){
     get_vcf_stats(hh_vcf, vcf_type = "hh")
 }
 
+## Han Chinese Trio Mendelian Inconsistent #####################################
+load_trio_vcf <- function(trio_vcffile){
+    require(VariantAnnotation)
+    require(BSgenome.Hsapiens.1000genomes.hs37d5)
+    grch37 <- "BSgenome.Hsapiens.1000genomes.hs37d5" 
+    
+    readVcf(trio_vcffile,genome = grch37)
+}
+
+get_trio_inconsistent_df <- function(trioincon_vcf){
+    ## Annotating Variant Type
+    geno(trioincon_vcf)[["GT"]] %>% 
+        data.frame(stringsAsFactors = FALSE) %>% 
+        rownames_to_column(var = "vcf_rowname") %>% 
+        add_column(indel = isIndel(trioincon_vcf, 
+                                   singleAltOnly = FALSE)) %>% 
+        add_column(snp = isSNV(trioincon_vcf, 
+                               singleAltOnly = FALSE)) %>% 
+        add_column(substitution = isSubstitution(trioincon_vcf, 
+                                                 singleAltOnly = FALSE))
+}
+
+get_denovo_df <- function(trioincon_vcf, trio_incon_df){
+    geno(trioincon_vcf)[["GT"]] %>% 
+        data.frame(stringsAsFactors = FALSE) %>% 
+        rownames_to_column(var = "vcf_rowname") %>% 
+        left_join(trio_incon_df) %>% 
+        filter(dad == "0/0", mom == "0/0", child != "1|1") 
+}
+
+## Bechmarking ##########################################################
+load_benchmarking_results <- function(benchmark_dir){
+    bench_dirs <- list.dir(bechmark_dir) %>% 
+        set_names(.)
+    
+    bench_dirs <- file.path(benchmark_dir, bench_dirs, "result_1") 
+    
+    ## generating a list with benchmarking results
+    bench_dirs %>% map(read_happy)
+    
+}
+
+make_benchmark_table <- function(bench_list){
+    ## Extract metrics
+    ## Generate table
+}
