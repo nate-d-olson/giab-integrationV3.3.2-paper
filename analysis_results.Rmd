@@ -72,11 +72,30 @@ metrics_df %>% filter(chrom != "genome") %>%
 Figures comparing SNPs and Indels per chrom overall and for high-confidence
 
 
-## Chinese Trio Mendelian inheritance analysis
+## Han Chinese Trio Mendelian inheritance analysis
+```{r}
+loadd(hc_trioincon_df)
+loadd(hc_denovo_df)
+violations_total <- nrow(hc_trioincon_df)
+violations_snps <- hc_trioincon_df %>% filter(snp == TRUE) %>% nrow()
+violations_indels <- hc_trioincon_df %>% filter(indel == TRUE) %>% nrow()
 
-Total number of violations (SNPs and Indels): 
-De novo/ germ-line somatic mutations (SNPs and Indels): 
+denovo_total <- nrow(hc_denovo_df)
+denovo_snps <- hc_denovo_df %>% filter(snp == TRUE) %>% nrow()
+denovo_indels <- hc_denovo_df %>% filter(indel == TRUE) %>% nrow()
+```
 
+__Mendelian Violations__   
+
+Total: `r violations_total`   
+SNPs: `r violations_snps`  
+Indels: `r violations_indels`   
+
+__De novo/ germ-line somatic mutations__  
+
+Total: `r denovo_total`   
+SNPs: `r denovo_snps`  
+Indels: `r denovo_indels`   
 
 ### Manual curation results
 
@@ -109,17 +128,17 @@ s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>%
 
 software versions (bedtools, bgzip, tabix, rtg)
 ```{r}
-system("bedtools --version")
+system("bedtools --version",intern = TRUE)
 ```
 ```{r}
-system("bgzip --version")
-```
-
-```{r}
-system("tabix --version")
+system("bgzip --version",intern = TRUE)
 ```
 
 ```{r}
-system("rtg --version")
+system("tabix --version",intern = TRUE)
+```
+
+```{r}
+system("~/sw/rtg-core-non-commercial-3.9.1/rtg --version",intern = TRUE)
 ```
 
