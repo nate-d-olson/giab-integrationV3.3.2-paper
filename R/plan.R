@@ -39,6 +39,11 @@ plan <- drake_plan(
     ## Benchmarking Results
     benchmark_dat = load_benchmarking_results("data_benchmarking"),
 
+    ## Summary table benchmarking data
+    benchmark_summary_tbl = map_dfr(benchmark_dat, 
+                                    get_bench_summary_df, 
+                                    .id = "hgref"),
+    
     ## Additional Drake parameters
     strings_in_dots = "literals"
 )

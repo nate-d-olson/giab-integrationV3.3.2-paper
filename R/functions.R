@@ -215,17 +215,22 @@ get_denovo_df <- function(trioincon_vcf, trio_incon_df){
 
 ## Bechmarking ##########################################################
 load_benchmarking_results <- function(benchmark_dir){
-    bench_dirs <- list.dir(bechmark_dir) %>% 
-        set_names(.)
-    
-    bench_dirs <- file.path(benchmark_dir, bench_dirs, "result_1") 
+    bench_dirs <- list.dirs(benchmark_dir, recursive = TRUE) %>%
+        grep(pattern = "HG.*results",value = TRUE) %>% 
+        set_names(.) %>% 
+        paste0("/result_1")
     
     ## generating a list with benchmarking results
     bench_dirs %>% map(read_happy)
     
 }
 
-make_benchmark_table <- function(bench_list){
-    ## Extract metrics
-    ## Generate table
-}
+get_bench_summary_df <- function(benchmark_happy_dat){
+    benchmark_happy_dat$extended %>% 
+        filter(Type %in% c("INDEL","SNP"), 
+               Subset %in% c("*", "notinalldifficultregions"),
+               Subtype == "*",
+               Filter == "PASS") %>% 
+        dplyr::select(Type, Subset, METRIC.Recall, 
+                      METRIC.Precision, METRIC.Frac_NA)
+} 

@@ -5,7 +5,7 @@ date: "9/10/2018"
 output: html_document
 ---
 
-```{r}
+```{r echo = FALSE, message = FALSE}
 library(drake)
 library(tidyverse)
 ```
@@ -105,6 +105,15 @@ precisionFDA Analysis Note
 https://precision.fda.gov/notes/362-gatk4-giab-aj-and-asian-trio-benchmarking 
 
 ### Updated supplemental table 2
+```{r}
+loadd(benchmark_summary_tbl)
+```
+
+```{r}
+benchmark_summary_tbl %>% 
+    knitr::kable()
+```
+
 __TODO__  
 Columns
     Genome
