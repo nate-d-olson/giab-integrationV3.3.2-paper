@@ -217,8 +217,9 @@ get_denovo_df <- function(trioincon_vcf, trio_incon_df){
 load_benchmarking_results <- function(benchmark_dir){
     bench_dirs <- list.dirs(benchmark_dir, recursive = TRUE) %>%
         grep(pattern = "HG.*results",value = TRUE) %>% 
-        set_names(.) %>% 
         paste0("/result_1")
+    
+    bench_dirs <- bench_dirs %>% set_names(str_extract(.,"HG0."))
     
     ## generating a list with benchmarking results
     bench_dirs %>% map(read_happy)

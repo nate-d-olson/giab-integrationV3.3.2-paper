@@ -109,24 +109,31 @@ https://precision.fda.gov/notes/362-gatk4-giab-aj-and-asian-trio-benchmarking
 loadd(benchmark_summary_tbl)
 ```
 
+
 ```{r}
-benchmark_summary_tbl %>% 
-    knitr::kable()
+supplemental_table <- benchmark_summary_tbl %>% 
+    arrange(Type, Subset) %>% 
+    mutate(Subset = if_else(Subset == "*", "all", Subset)) %>% 
+    mutate(one_minus_recall = (1 - METRIC.Recall) * 100, 
+           one_minus_precision = (1 - METRIC.Precision) * 100) %>% 
+    dplyr::select(hgref, Type, Subset, one_minus_recall, one_minus_precision,  
+           METRIC.Recall,  METRIC.Precision, METRIC.Frac_NA)
+
+colnames(supplemental_table) <- c("Genome", "Type", "Subset", 
+                                 "100% - recall", "100% - precision", 
+                                 "Recall", "Precision", 
+                                 "Fraction of calls outside high-conf bed")
+
 ```
 
-__TODO__  
-Columns
-    Genome
-    Type
-    Subset
-    100%-recall
-    100%-precision
-    Recall
-    Precision
-    Fraction of calls outside high_conf bed
+Saving to googlesheet for integration paper
+```{r}
+library(googlesheets)
+int_gs <- gs_title("integrationV3.3.2_supplemental_table2")
+gs_edit_cells(ss = int_gs, ws = 1, input = supplemental_table,col_names = TRUE)
+```
 
 ## System Information
-__TODO__
 Reproducible anaylsis info: 
 ```{r}
 s_info <- devtools::session_info()
@@ -148,6 +155,6 @@ system("tabix --version",intern = TRUE)
 ```
 
 ```{r}
-system("~/sw/rtg-core-non-commercial-3.9.1/rtg --version",intern = TRUE)
+system("~/sw/rtg-core-non-commercial-3.9.1/rtg --version",intern = TRUE)[1:2]
 ```
 

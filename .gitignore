@@ -2,8 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
-
 ## data directories
 data_*
 .drake
-
+.httr-oauth
