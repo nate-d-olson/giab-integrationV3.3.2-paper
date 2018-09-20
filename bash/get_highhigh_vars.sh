@@ -6,4 +6,4 @@ OUTDIR=${3}
 ## Get the intersection of high confidence vcf and bed files
 bedtools intersect -header -a ${VCF} -b ${BED} > ${OUTDIR}/highhigh.vcf
 bgzip ${OUTDIR}/highhigh.vcf
-tabix ${OUTDIR}/highhigh.vcf.gz
+tabix -f ${OUTDIR}/highhigh.vcf.gz

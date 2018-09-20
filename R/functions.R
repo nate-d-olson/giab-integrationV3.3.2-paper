@@ -219,7 +219,7 @@ load_benchmarking_results <- function(benchmark_dir){
         grep(pattern = "HG.*results",value = TRUE) %>% 
         paste0("/result_1")
     
-    bench_dirs <- bench_dirs %>% set_names(str_extract(.,"HG0."))
+    bench_dirs <- bench_dirs %>% set_names(str_extract(.,"HG00."))
     
     ## generating a list with benchmarking results
     bench_dirs %>% map(read_happy)

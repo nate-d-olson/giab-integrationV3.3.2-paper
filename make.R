@@ -9,4 +9,4 @@ source("R/plan.R")      # Build your workflow plan data frame.
 #vis_drake_graph(config)         # nolint
 
 # Now it is time to actually run your project.
-make(plan) # Or make(my_plan, jobs = 2), etc.
+make(plan,jobs = 6) # Or make(my_plan, jobs = 2), etc.

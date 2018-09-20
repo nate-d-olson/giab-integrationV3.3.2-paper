@@ -17,7 +17,7 @@ Generate summary tables and figures for integration manuscript.
 
 ## High confidence region coverage and variants by chromosome
 
-```{r}
+```{r message = FALSE}
 loadd(hcr_cov_df)
 loadd(hc_var_df)
 loadd(hh_var_df)
@@ -48,11 +48,35 @@ metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>%
 
 
 
-__Table__ Metric summary for full genome
+__Table__ Metric summary for full genomes HG001 - HG007 GRCh37. 
 ```{r}
-metrics_df %>% filter(chrom == "genome") %>% 
-    select(hgref, chrom, coverage_nonN, SNPs, hhSNPs, Indels, hhIndels)
+hcr_cov_df %>% 
+    filter(chrom == "genome") %>% 
+    dplyr::select(hgref, nbases, coverage_nonN) 
 ```
+
+```{r}
+hc_vcf_df %>% filter(Key %in% c("SNPs","Insertions","Deletions", 
+                                "Indels", "Phased Genotypes", 
+                                "SNP Transitions/Transversions")) %>% 
+    filter(chrom == "chr1-22") %>% 
+    mutate(Value = str_remove(Value, " \\(.*")) %>% 
+    spread(hgref, Value)
+```
+
+
+X Number of bases in highconf regions (chromosomes 1-22) (nbases)
+X Fraction of non-N bases covered in chromosomes 1-22) (coverage_nonN)
+TODO -- Fraction of RefSeq coding sequence covered
+TODO -- Total number of calls in highconf regions
+X SNPs
+X Insertions
+X Deletions
+X Block Substitutions
+X Transition/Transversion ratio for SNVs
+X Fraction phased globally or locally
+
+
 
 
 ```{r}
@@ -61,15 +85,6 @@ metrics_df %>% filter(chrom != "genome") %>%
     geom_point(aes(x = chrom, y = coverage_nonN, color = hgref)) + 
     theme_bw()
 ```
-
-```{r}
-metrics_df %>% filter(chrom != "genome") %>% 
-    ggplot() + 
-    geom_point(aes(x = chrom, y = SNPs, color = hgref)) + 
-    theme_bw()
-```
-
-Figures comparing SNPs and Indels per chrom overall and for high-confidence
 
 
 ## Han Chinese Trio Mendelian inheritance analysis
@@ -98,7 +113,31 @@ SNPs: `r denovo_snps`
 Indels: `r denovo_indels`   
 
 ### Manual curation results
+1. Select 12 random variants (6 SNPs and 6 indels), 2 extra will currate 10. Randomly selected variants from different chromosomes. 
+```{r}
+denovo_df <- hc_denovo_df %>% 
+    mutate(var_type = if_else(indel == TRUE, "indel", "snp")) %>% 
+    dplyr::select(-indel, -snp, -substitution) %>% 
+    separate(vcf_rowname, into = c("chrom","position","ref","alt")) %>% 
+    group_by(chrom, var_type)
 
+set.seed(seed = 53117)
+random_chroms <- sample(x = unique(denovo_df$chrom),size = 12)
+random_df <- data_frame(chrom = random_chroms,
+                        var_type = rep(c("indel","snp"), 6))
+
+denovo_df %>% 
+    right_join(random_df) %>% 
+    group_by(chrom) %>% 
+    sample_n(1) %>% 
+    dplyr::select(chrom, position, var_type, ref, alt) %>% 
+    DT::datatable()
+```
+
+2. JZ, JW, and NDO manual curation
+    - capture image with informative alignment information
+    - note reason for classification
+3. Summarize curation results with image, classification, and reasoning
 
 ## Benchmarking Results
 precisionFDA Analysis Note
@@ -126,6 +165,11 @@ colnames(supplemental_table) <- c("Genome", "Type", "Subset",
 
 ```
 
+
+```{r}
+supplemental_table %>% DT::datatable()
+```
+
 Saving to googlesheet for integration paper
 ```{r}
 library(googlesheets)
@@ -138,7 +182,7 @@ Reproducible anaylsis info:
 ```{r}
 s_info <- devtools::session_info()
 print(s_info$platform)
-s_info$packages %>% filter(`*` == "*") %>% select(-`*`) %>% 
+s_info$packages %>% filter(`*` == "*") %>% dplyr::select(-`*`) %>% 
       knitr::kable()
 ```
 

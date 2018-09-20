@@ -3,11 +3,11 @@ file.exists("inputs.csv")
 file.exists("bash/get_vcf_chrom_stats.sh")
 file.exists("bash/get_highhigh_vars.sh")
 
-if(!dir.exists("workflow_data")) dir.create("workflow_data")
+if(!dir.exists("data_workflow")) dir.create("data_workflow")
 
 plan <- drake_plan(
     ## data frame with file sources
-    input = read_csv("inputs.csv"),
+    input = read_csv(file_in("inputs.csv")),
     
     ## high confidence region coverage -----------------------------------------
     ## get non-N genome and chromosome sizes 
