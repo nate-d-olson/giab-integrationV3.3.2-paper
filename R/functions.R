@@ -92,7 +92,7 @@ get_chrom_sizes <- function(genome = "hs37d5"){
 get_bed_cov_by_chrom <- function(bed_file){
     ## Read as tsv
     bed_df <- read_tsv(bed_file, 
-                       col_names = c("chrom","start","end")) %>% 
+                       col_names = c("chrom","start","end"), col_types = "cii") %>% 
         ## Compute region size
         mutate(region_size = end - start)
     
@@ -182,6 +182,33 @@ get_hh_stats_df <- function(vcf_source, bed_source){
     hh_vcf <- file.path(hh_var_dir, "highhigh.vcf.gz")
     get_vcf_stats(hh_vcf, vcf_type = "hh")
 }
+
+
+## High conf fraction of RefSeq coding sequence covered ########################
+get_coding_seq_cov <- function(bed_source, refseq_coding_bed){
+    
+    # Get bed file
+    bed_file <- get_file_path(bed_source) 
+    
+    # Intersect highconf regions with refseq coding
+    tmp_bed <- tempfile(fileext = "bed")
+    system2("bedtools", 
+            args = c("intersect", "-a", bed_file, "-b", refseq_coding_bed),
+            stdout = tmp_bed)
+    
+    # refseq  nbases
+    refseq_cov <- get_bed_cov_by_chrom(refseq_coding_bed) %>% 
+        dplyr::rename(ncoding_bases = nbases)
+    
+    # intersect nbases
+    intersect_cov <- get_bed_cov_by_chrom(tmp_bed)
+    
+    ## Calculate fraction
+    left_join(refseq_cov, intersect_cov) %>% 
+        mutate(nbases = if_else(!is.na(nbases), as.numeric(nbases), 0)) %>% 
+        mutate(frac_coding = nbases / ncoding_bases)
+}
+
 
 ## Han Chinese Trio Mendelian Inconsistent #####################################
 load_trio_vcf <- function(trio_vcffile){

@@ -8,6 +8,7 @@ output: html_document
 ```{r echo = FALSE, message = FALSE}
 library(drake)
 library(tidyverse)
+library(googlesheets)
 ```
 
 ## Objective
@@ -21,6 +22,7 @@ Generate summary tables and figures for integration manuscript.
 loadd(hcr_cov_df)
 loadd(hc_var_df)
 loadd(hh_var_df)
+loadd(hc_coding_df)
 ```
 
 
@@ -50,40 +52,79 @@ metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>%
 
 __Table__ Metric summary for full genomes HG001 - HG007 GRCh37. 
 ```{r}
-hcr_cov_df %>% 
+highconf_cov <- hcr_cov_df %>% 
     filter(chrom == "genome") %>% 
     dplyr::select(hgref, nbases, coverage_nonN) 
-```
 
-```{r}
-hc_vcf_df %>% filter(Key %in% c("SNPs","Insertions","Deletions", 
+highconf_calls <- hc_vcf_df %>% filter(Key %in% c("Passed Filters",
+                                "SNPs","Insertions","Deletions", 
                                 "Indels", "Phased Genotypes", 
                                 "SNP Transitions/Transversions")) %>% 
     filter(chrom == "chr1-22") %>% 
     mutate(Value = str_remove(Value, " \\(.*")) %>% 
-    spread(hgref, Value)
+    spread(Key, Value) %>% 
+    dplyr::rename(total_calls = `Passed Filters`)
+
+calls_in_highconf <- hh_vcf_df %>% 
+    filter(Key %in% "Passed Filters") %>% 
+    filter(chrom == "chr1-22") %>% 
+    spread(Key, Value) %>% 
+    dplyr::rename(total_calls_in_highconf = `Passed Filters`)
+
+
+coding_frac <- hc_coding_df %>% 
+    filter(chrom == "genome") %>% 
+    dplyr::select(hgref, frac_coding)
+
+highconf_summary_metrics <- left_join(highconf_cov, coding_frac) %>%
+    left_join(calls_in_highconf) %>% left_join(highconf_calls)
+```
+Saving table to google sheet
+```{r}
+int_gs <- gs_title("integrationV3.3.2_supplemental")
+gs_edit_cells(ss = int_gs, ws = 1, 
+              input = highconf_summary_metrics, 
+              col_names = TRUE)
+```
+
+```{r}
+highconf_summary_metrics %>% 
+    dplyr::select(hgref, nbases, coverage_nonN, frac_coding, total_calls_in_highconf, 
+                  total_calls, SNPs, Insertions, Deletions, Indels, 
+                  `SNP Transitions/Transversions`, `Phased Genotypes`) %>% 
+    mutate(coverage_nonN = round(coverage_nonN, 2)) %>% 
+    mutate(frac_coding = round(frac_coding, 2)) %>% 
+    gather("key", "value", -hgref) %>% 
+    spread(hgref, value)
 ```
 
 
 X Number of bases in highconf regions (chromosomes 1-22) (nbases)
 X Fraction of non-N bases covered in chromosomes 1-22) (coverage_nonN)
-TODO -- Fraction of RefSeq coding sequence covered
-TODO -- Total number of calls in highconf regions
-X SNPs
-X Insertions
-X Deletions
-X Block Substitutions
-X Transition/Transversion ratio for SNVs
-X Fraction phased globally or locally
-
-
+X Fraction of RefSeq coding sequence covered (frac_coding)
+X Total number of calls in highconf regions (total_calls_in_highconf)
+X SNPs (from rtg vcfstats)
+X Insertions (from rtg vcfstats)
+X Deletions (from rtg vcfstats)
+X Block Substitutions (Indels - from rtg vcfstats)
+X Transition/Transversion ratio for SNVs (from rtg vcfstats)
+X Fraction phased globally or locally (from rtg vcfstats)
 
 
 ```{r}
-metrics_df %>% filter(chrom != "genome") %>% 
+metrics_df$chrom %>% unique()
+```
+
+
+```{r}
+metrics_df %>% 
+    filter(chrom != "genome", chrom != "chrX") %>% 
+    mutate(chrom = factor(chrom, levels = paste0("chr", 1:22))) %>% 
     ggplot() + 
     geom_point(aes(x = chrom, y = coverage_nonN, color = hgref)) + 
-    theme_bw()
+    theme_bw() + 
+    labs(x = "Chromsome", y = "Coverage of non-N Bases", color = "NIST ID") + 
+    theme(axis.text.x = element_text(angle = -45, hjust = 0))
 ```
 
 
@@ -113,7 +154,7 @@ SNPs: `r denovo_snps`
 Indels: `r denovo_indels`   
 
 ### Manual curation results
-1. Select 12 random variants (6 SNPs and 6 indels), 2 extra will currate 10. Randomly selected variants from different chromosomes. 
+1. Select 10 random variants (5 SNPs and 5 indels). Randomly selected variants from different chromosomes. 
 ```{r}
 denovo_df <- hc_denovo_df %>% 
     mutate(var_type = if_else(indel == TRUE, "indel", "snp")) %>% 
@@ -121,7 +162,7 @@ denovo_df <- hc_denovo_df %>%
     separate(vcf_rowname, into = c("chrom","position","ref","alt")) %>% 
     group_by(chrom, var_type)
 
-set.seed(seed = 53117)
+set.seed(seed = 531)
 random_chroms <- sample(x = unique(denovo_df$chrom),size = 12)
 random_df <- data_frame(chrom = random_chroms,
                         var_type = rep(c("indel","snp"), 6))

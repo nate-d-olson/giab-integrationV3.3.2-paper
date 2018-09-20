@@ -31,6 +31,13 @@ plan <- drake_plan(
     ## high confidence variants in high confidence region per genome
     hh_vcf_df = map2_dfr(hc_vcfs, hc_beds, get_hh_stats_df, .id = "hgref"),
 
+    ## Refseq coding coverage file downloaded from
+    ## https://github.com/ga4gh/benchmarking-tools/blob/master/resources/stratification-bed-files/FunctionalRegions/refseq_union_cds.sort.coordsonly.bed.gz
+    refseq_coding_bed = file_in("data_ref/refseq_union_cds.sort.coordsonly.bed.gz"),
+    
+    hc_coding_df = hc_beds %>% 
+        map_dfr(get_coding_seq_cov, refseq_coding_bed, .id = "hgref"),
+    
     ## Chinese trio mendelian analysis 
     hc_trioincon_vcf = load_trio_vcf("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz"),
     hc_trioincon_df = get_trio_inconsistent_df(hc_trioincon_vcf),
