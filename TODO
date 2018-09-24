@@ -1,7 +1,3 @@
-Rmarkdown/ summary tables and figures
-- Whole genome summary table
-- Per chromosome summary figure
-- Chinese trio analysis metrics 
-
 TODO
 - add md5sums to ftp download
+- add file paths for downloading benchmarking data
