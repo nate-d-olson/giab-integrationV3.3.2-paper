@@ -1,8 +1,12 @@
 ---
 title: "Integration v3.3.2 Analysis Results"
 author: "Nate Olson"
-date: "9/10/2018"
-output: html_document
+date: '`r Sys.Date()`'
+output: 
+    bookdown::html_document2:
+        toc: true
+        toc_float: true
+        df_print: paged
 ---
 
 ```{r echo = FALSE, message = FALSE}
@@ -11,22 +15,19 @@ library(tidyverse)
 library(googlesheets)
 ```
 
-## Objective
-Generate summary tables and figures for integration manuscript.
+Code to generate figures and tables for the GIAB Integration V3.3.2 manuscript. 
 
 
+# Genome Metrics
+Summary table and figures for the seven GIAB genomes. 
 
-## High confidence region coverage and variants by chromosome
-
+__Loading and tidying data__
 ```{r message = FALSE}
 loadd(hcr_cov_df)
 loadd(hc_var_df)
 loadd(hh_var_df)
 loadd(hc_coding_df)
-```
 
-
-```{r}
 ## Can add ti/tv, het/hom, and other stats from vcfstats
 hc_vcf_tidy <- hc_vcf_df %>% 
     filter(Key %in% c("SNPs","Insertions","Deletions")) %>% 
@@ -46,12 +47,8 @@ hh_vcf_tidy <- hh_vcf_df %>%
 
 metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>% 
     left_join(hh_vcf_tidy)
-```
 
-
-
-__Table__ Metric summary for full genomes HG001 - HG007 GRCh37. 
-```{r}
+## Combining metrics for summary table
 highconf_cov <- hcr_cov_df %>% 
     filter(chrom == "genome") %>% 
     dplyr::select(hgref, nbases, coverage_nonN) 
@@ -78,15 +75,15 @@ coding_frac <- hc_coding_df %>%
 
 highconf_summary_metrics <- left_join(highconf_cov, coding_frac) %>%
     left_join(calls_in_highconf) %>% left_join(highconf_calls)
-```
-Saving table to google sheet
-```{r}
+
+## Saving values to googlesheet
 int_gs <- gs_title("integrationV3.3.2_supplemental")
 gs_edit_cells(ss = int_gs, ws = 1, 
               input = highconf_summary_metrics, 
               col_names = TRUE)
 ```
 
+## Metric summary table for full genomes HG001 - HG007 GRCh37. 
 ```{r}
 highconf_summary_metrics %>% 
     dplyr::select(hgref, nbases, coverage_nonN, frac_coding, total_calls_in_highconf, 
@@ -95,27 +92,24 @@ highconf_summary_metrics %>%
     mutate(coverage_nonN = round(coverage_nonN, 2)) %>% 
     mutate(frac_coding = round(frac_coding, 2)) %>% 
     gather("key", "value", -hgref) %>% 
-    spread(hgref, value)
+    spread(hgref, value) %>% 
+    knitr::kable()
 ```
 
+__Table Value Descriptions__  
 
-X Number of bases in highconf regions (chromosomes 1-22) (nbases)
-X Fraction of non-N bases covered in chromosomes 1-22) (coverage_nonN)
-X Fraction of RefSeq coding sequence covered (frac_coding)
-X Total number of calls in highconf regions (total_calls_in_highconf)
-X SNPs (from rtg vcfstats)
-X Insertions (from rtg vcfstats)
-X Deletions (from rtg vcfstats)
-X Block Substitutions (Indels - from rtg vcfstats)
-X Transition/Transversion ratio for SNVs (from rtg vcfstats)
-X Fraction phased globally or locally (from rtg vcfstats)
+- Number of bases in highconf regions (chromosomes 1-22) (nbases)    
+- Fraction of non-N bases covered in chromosomes 1-22) (coverage_nonN)  
+- Fraction of RefSeq coding sequence covered (frac_coding)  
+- Total number of calls in highconf regions (total_calls_in_highconf)  
+- SNPs (from rtg vcfstats)  
+- Insertions (from rtg vcfstats)  
+- Deletions (from rtg vcfstats)  
+- Block Substitutions (Indels - from rtg vcfstats)  
+- Transition/Transversion ratio for SNVs (from rtg vcfstats)  
+- Fraction phased globally or locally (from rtg vcfstats)  
 
-
-```{r}
-metrics_df$chrom %>% unique()
-```
-
-
+## Chromosome Coverage Figure
 ```{r}
 metrics_df %>% 
     filter(chrom != "genome", chrom != "chrX") %>% 
@@ -128,7 +122,7 @@ metrics_df %>%
 ```
 
 
-## Han Chinese Trio Mendelian inheritance analysis
+# Han Chinese Trio Mendelian inheritance analysis
 ```{r}
 loadd(hc_trioincon_df)
 loadd(hc_denovo_df)
@@ -153,7 +147,7 @@ Total: `r denovo_total`
 SNPs: `r denovo_snps`  
 Indels: `r denovo_indels`   
 
-### Manual curation results
+## Manual curation results
 1. Select 10 random variants (5 SNPs and 5 indels). Randomly selected variants from different chromosomes. 
 ```{r}
 denovo_df <- hc_denovo_df %>% 
@@ -163,9 +157,9 @@ denovo_df <- hc_denovo_df %>%
     group_by(chrom, var_type)
 
 set.seed(seed = 531)
-random_chroms <- sample(x = unique(denovo_df$chrom),size = 12)
+random_chroms <- sample(x = unique(denovo_df$chrom),size = 10)
 random_df <- data_frame(chrom = random_chroms,
-                        var_type = rep(c("indel","snp"), 6))
+                        var_type = rep(c("indel","snp"), 5))
 
 denovo_df %>% 
     right_join(random_df) %>% 
@@ -180,17 +174,14 @@ denovo_df %>%
     - note reason for classification
 3. Summarize curation results with image, classification, and reasoning
 
-## Benchmarking Results
+# Benchmarking Results
 precisionFDA Analysis Note
 https://precision.fda.gov/notes/362-gatk4-giab-aj-and-asian-trio-benchmarking 
 
-### Updated supplemental table 2
+__Load and tidy data__
 ```{r}
 loadd(benchmark_summary_tbl)
-```
 
-
-```{r}
 supplemental_table <- benchmark_summary_tbl %>% 
     arrange(Type, Subset) %>% 
     mutate(Subset = if_else(Subset == "*", "all", Subset)) %>% 
@@ -204,22 +195,21 @@ colnames(supplemental_table) <- c("Genome", "Type", "Subset",
                                  "Recall", "Precision", 
                                  "Fraction of calls outside high-conf bed")
 
-```
-
-
-```{r}
-supplemental_table %>% DT::datatable()
-```
-
-Saving to googlesheet for integration paper
-```{r}
-library(googlesheets)
+## Saving to googlesheet for integration paper
 int_gs <- gs_title("integrationV3.3.2_supplemental_table2")
 gs_edit_cells(ss = int_gs, ws = 1, input = supplemental_table,col_names = TRUE)
 ```
 
-## System Information
-Reproducible anaylsis info: 
+
+## Benchmarking Results Table (Supplemental Table 2)
+```{r}
+supplemental_table %>% DT::datatable()
+```
+
+
+
+# System Information
+
 ```{r}
 s_info <- devtools::session_info()
 print(s_info$platform)
@@ -227,18 +217,24 @@ s_info$packages %>% filter(`*` == "*") %>% dplyr::select(-`*`) %>%
       knitr::kable()
 ```
 
-software versions (bedtools, bgzip, tabix, rtg)
+## Software Versions
+__BEDtools__
 ```{r}
 system("bedtools --version",intern = TRUE)
 ```
+
+__bgzip__
 ```{r}
 system("bgzip --version",intern = TRUE)
 ```
 
+
+__tabix__
 ```{r}
 system("tabix --version",intern = TRUE)
 ```
 
+__Real-Time Genomics__
 ```{r}
 system("~/sw/rtg-core-non-commercial-3.9.1/rtg --version",intern = TRUE)[1:2]
 ```
