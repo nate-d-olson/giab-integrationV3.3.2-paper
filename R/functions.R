@@ -94,7 +94,9 @@ get_bed_cov_by_chrom <- function(bed_file){
     bed_df <- read_tsv(bed_file, 
                        col_names = c("chrom","start","end"), col_types = "cii") %>% 
         ## Compute region size
-        mutate(region_size = end - start)
+        mutate(region_size = end - start) %>% 
+        ## Only looking at Chromosomes 1-22
+        filter(chrom %in% c(1:22, paste0("chr", 1:22)))
     
     ## Compute bases per chromosome
     chrom_cov <- bed_df %>% 

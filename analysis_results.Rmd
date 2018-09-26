@@ -7,6 +7,7 @@ output:
         toc: true
         toc_float: true
         df_print: paged
+        code_folding: hide
 ---
 
 ```{r echo = FALSE, message = FALSE}
@@ -21,8 +22,8 @@ Code to generate figures and tables for the GIAB Integration V3.3.2 manuscript.
 # Genome Metrics
 Summary table and figures for the seven GIAB genomes. 
 
-__Loading and tidying data__
 ```{r message = FALSE}
+## Loading and tidying data
 loadd(hcr_cov_df)
 loadd(hc_var_df)
 loadd(hh_var_df)
@@ -53,7 +54,7 @@ highconf_cov <- hcr_cov_df %>%
     filter(chrom == "genome") %>% 
     dplyr::select(hgref, nbases, coverage_nonN) 
 
-highconf_calls <- hc_vcf_df %>% filter(Key %in% c("Passed Filters",
+highconf_calls <- hh_vcf_df %>% filter(Key %in% c("Passed Filters",
                                 "SNPs","Insertions","Deletions", 
                                 "Indels", "Phased Genotypes", 
                                 "SNP Transitions/Transversions")) %>% 
@@ -160,13 +161,22 @@ set.seed(seed = 531)
 random_chroms <- sample(x = unique(denovo_df$chrom),size = 10)
 random_df <- data_frame(chrom = random_chroms,
                         var_type = rep(c("indel","snp"), 5))
+random_df2 <- data_frame(chrom = random_chroms,
+                        var_type = rep(c("snp","indel"), 5))
 
-denovo_df %>% 
+set_1 <- denovo_df %>% 
     right_join(random_df) %>% 
     group_by(chrom) %>% 
     sample_n(1) %>% 
-    dplyr::select(chrom, position, var_type, ref, alt) %>% 
-    DT::datatable()
+    dplyr::select(chrom, position, var_type, ref, alt)
+
+set_2 <- denovo_df %>% 
+    right_join(random_df2) %>% 
+    group_by(chrom) %>% 
+    sample_n(1) %>% 
+    dplyr::select(chrom, position, var_type, ref, alt)
+
+bind_rows(set_1, set_2) %>% DT::datatable()
 ```
 
 2. JZ, JW, and NDO manual curation
