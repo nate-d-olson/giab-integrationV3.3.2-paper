@@ -1,3 +1,5 @@
 TODO
-- add md5sums to ftp download
+- fix issue with HG006 and HG007 as NA in data_workflow
 - add file paths for downloading benchmarking data
+- add md5sums to ftp download
+- unclear when drake updates 

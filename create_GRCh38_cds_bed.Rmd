@@ -1,0 +1,62 @@
+---
+title: "Make GRCh38 refcoding bed"
+author: "Nate Olson"
+date: "10/1/2018"
+output: html_document
+---
+
+```{r message = FALSE}
+library(tidyverse)
+```
+
+# Generating coding sequence file file for GRCh38 
+Using feature table from ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.38_GRCh38.p12/GCF_000001405.38_GRCh38.p12_feature_table.txt.gz 
+```{r}
+tmp_file <- tempfile(fileext = ".gz")
+download.file(url = "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.38_GRCh38.p12/GCF_000001405.38_GRCh38.p12_feature_table.txt.gz",
+              destfile = tmp_file,)
+feature_table <- read_tsv(tmp_file)
+```
+Extract CDS for chromosomes 1-22 and convert to 3 column table
+```{r}
+f_table_3col <- feature_table %>% 
+    filter(`# feature` == "CDS", chromosome %in% 1:22) %>% 
+    select(chromosome, start, end) %>% 
+    arrange(chromosome, start) %>% 
+    mutate(chrom = paste0("chr", chromosome)) %>% 
+    select(chrom, start, end) 
+```
+
+Write to file
+```{r}
+tmp_bed <- tempfile(fileext = ".bed")
+write_tsv(f_table_3col, tmp_bed, col_names = FALSE)
+```
+
+Merge overlapping CDS and compress
+```{r}
+system2("bedtools", args = c("merge", "-i", tmp_bed), stdout = "data_ref/GRCh38_cds_merged.bed" )
+system2("bgzip", "data_ref/GRCh38_cds_merged.bed")
+```
+
+# System Information
+
+```{r}
+s_info <- devtools::session_info()
+print(s_info$platform)
+s_info$packages %>% filter(`*` == "*") %>% dplyr::select(-`*`) %>% 
+      knitr::kable()
+```
+
+## Software Versions
+__BEDtools__
+```{r}
+system("bedtools --version",intern = TRUE)
+```
+
+__bgzip__
+```{r}
+system("bgzip --version",intern = TRUE)
+```
+
+

@@ -13,9 +13,9 @@ get_file_list <- function(input_df, type){
 ## Download file from url and saves to tmp file or user specified file name
 get_from_ftp <- function(ftp, filename = NULL){
     if(grepl(x = ftp, pattern = "bed")){
-        file_ext <- "bed"
+        file_ext <- ".bed"
     } else if( grepl(x = ftp, pattern = "vcf.gz")){
-        file_ext <- "vcf.gz"
+        file_ext <- ".vcf.gz"
     } else {
         message("file extention not `bed` or `vcf.gz`")
         file_ext <- ""
@@ -43,17 +43,25 @@ get_file_path <- function(file_source){
 ## Utilities ###################################################################
 ## Get non-N base genome and chromosome sizes, 
 ## requires BSgenome formatted object
-
-get_chrom_sizes <- function(genome = "hs37d5"){
+get_genome <- function(genome){
     if (genome == "hs37d5"){
         require(BSgenome.Hsapiens.1000genomes.hs37d5)
-        genome <- BSgenome.Hsapiens.1000genomes.hs37d5
+        return(BSgenome.Hsapiens.1000genomes.hs37d5)
+    } else if (genome == "GRCh38") {
+        require(BSgenome.Hsapiens.NCBI.GRCh38)
+        return(BSgenome.Hsapiens.NCBI.GRCh38)
     } else {
-        stop("Only coded for hs37d5")
+        stop("Genome not `hs37d5` or `GRCh38`")
     }
+}
+
+
+get_chrom_sizes <- function(genome = "hs37d5"){
+
+    genome_obj <- get_genome(genome)
     
     get_alpha_freq <- function(i){
-        genome[[i]] %>% 
+        genome_obj[[i]] %>% 
             alphabetFrequency() %>% 
             data.frame()
     }
@@ -64,8 +72,8 @@ get_chrom_sizes <- function(genome = "hs37d5"){
     colnames(alpha_freq_df) <- paste0("chr",1:22)
     
     alpha_freq_df <- alpha_freq_df %>% 
-        ## Removing bases not included in counts
-        filter(chr1 != 0) %>% 
+        ## Removing bases not included in counts and non-standard bases
+        filter(chr1 >100) %>% 
         add_column(base = c("A","C","G","T","N"))
     
     chromosome_lengths <- alpha_freq_df %>% 
@@ -112,11 +120,21 @@ get_bed_cov_by_chrom <- function(bed_file){
 }
 
 ## Compute coverage of total size and non-N bases
-get_hc_cov <- function(bed_source, chrom_lengths){
+get_hc_cov <- function(bed_source, chrom_lengths_list){
     ## get file path
     bed_file <- get_file_path(bed_source)
     
     cov_df <- get_bed_cov_by_chrom(bed_file)
+    
+    ## Chrom sizes by genome
+    if(grepl("GRCh37", bed_source)){
+        chrom_lengths <- chrom_lengths_list$GRCh37
+    } else if (grepl("GRCh38", bed_source)){
+        chrom_lengths <- chrom_lengths_list$GRCh38
+    } else {
+        stop("GRCh37 or GRCh38 not in bed_source - check input table")
+    }
+    
     
     cov_df %>% 
         ## add Chrom size and non-N base size
@@ -138,9 +156,6 @@ make_stats_df <- function(vcf_stats_dir){
                 trim_ws = TRUE, 
                 col_names = c("Key","Value"),
                 .id = "chrom")
-
-    ## tidy
-    ## TODO -----------------------------
     
     ## return data frame
     stat_df
@@ -150,7 +165,15 @@ get_vcf_stats <- function(vcf_source, vcf_type){
     vcf_file <- get_file_path(vcf_source)
     
     ## Defining and creating output directory
-    hgref <- str_extract(vcf_source, "HG00.")
+    if(grepl("HG00._GRCh3.", vcf_source)){
+        hgref <- str_extract(vcf_source, "HG00._GRCh3.") 
+    } else if(grepl("HG00._GIAB_GRCh3.", vcf_source)) {
+        hgref <- str_extract(vcf_source, "HG00._GIAB_GRCh3.")
+        hgref <- str_remove(hgref, "_GIAB")
+    } else {
+        hgref <- str_extract(vcf_file, "HG00._GRCh3.") 
+    }
+    
     vcf_stats_dir <- paste0("data_workflow/", hgref, "_", vcf_type, "_stats")
     if(!dir.exists(vcf_stats_dir)) dir.create(vcf_stats_dir)
     
@@ -170,7 +193,15 @@ get_hh_stats_df <- function(vcf_source, bed_source){
     vcf_file <- get_file_path(vcf_source)
     
     # output directory
-    hgref <- str_extract(vcf_source, "HG00.")
+    if(grepl("HG00._GRCh3.", vcf_source)){
+        hgref <- str_extract(vcf_source, "HG00._GRCh3.") 
+    } else if(grepl("HG00._GIAB_GRCh3.", vcf_source)) {
+        hgref <- str_extract(vcf_source, "HG00._GIAB_GRCh3.")
+        hgref <- str_remove(hgref, "_GIAB")
+    } else {
+        hgref <- str_extract(vcf_file, "HG00._GRCh3.") 
+    }
+    
     hh_var_dir <- paste0("data_workflow/", hgref, "_hh_vcf")
     if(!dir.exists(hh_var_dir)) dir.create(hh_var_dir)
     
@@ -187,7 +218,15 @@ get_hh_stats_df <- function(vcf_source, bed_source){
 
 
 ## High conf fraction of RefSeq coding sequence covered ########################
-get_coding_seq_cov <- function(bed_source, refseq_coding_bed){
+get_coding_seq_cov <- function(bed_source, refseq_coding_bed_list){
+    ## Not GRCh38 Coding Bed
+    if(grepl("GRCh38", bed_source)){
+        refseq_coding_bed <- refseq_coding_bed_list$grch38
+    } else if(grepl("GRCh37", bed_source)){
+        refseq_coding_bed <- refseq_coding_bed_list$grch37
+    } else {
+        stop("Coding bed not found")
+    }
     
     # Get bed file
     bed_file <- get_file_path(bed_source) 
@@ -215,10 +254,15 @@ get_coding_seq_cov <- function(bed_source, refseq_coding_bed){
 ## Han Chinese Trio Mendelian Inconsistent #####################################
 load_trio_vcf <- function(trio_vcffile){
     require(VariantAnnotation)
-    require(BSgenome.Hsapiens.1000genomes.hs37d5)
-    grch37 <- "BSgenome.Hsapiens.1000genomes.hs37d5" 
+    if(grepl("GRCh38", trio_vcffile)){
+        require(BSgenome.Hsapiens.NCBI.GRCh38)
+        genome_obj <- "BSgenome.Hsapiens.NCBI.GRCh38"
+    } else {
+        require(BSgenome.Hsapiens.1000genomes.hs37d5)
+        genome_obj <- "BSgenome.Hsapiens.1000genomes.hs37d5"
+    }
     
-    readVcf(trio_vcffile,genome = grch37)
+    readVcf(trio_vcffile, genome = genome_obj)
 }
 
 get_trio_inconsistent_df <- function(trioincon_vcf){
