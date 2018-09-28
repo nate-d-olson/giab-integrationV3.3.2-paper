@@ -52,7 +52,7 @@ metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>%
 ## Combining metrics for summary table
 highconf_cov <- hcr_cov_df %>% 
     filter(chrom == "genome") %>% 
-    dplyr::select(hgref, nbases, coverage_nonN) 
+    dplyr::select(hgref, nbases, coverage, coverage_nonN) 
 
 highconf_calls <- hh_vcf_df %>% filter(Key %in% c("Passed Filters",
                                 "SNPs","Insertions","Deletions", 
@@ -84,12 +84,14 @@ gs_edit_cells(ss = int_gs, ws = 1,
               col_names = TRUE)
 ```
 
+
 ## Metric summary table for full genomes HG001 - HG007 GRCh37. 
 ```{r}
 highconf_summary_metrics %>% 
-    dplyr::select(hgref, nbases, coverage_nonN, frac_coding, total_calls_in_highconf, 
+    dplyr::select(hgref, nbases, coverage, coverage_nonN, frac_coding, total_calls_in_highconf, 
                   total_calls, SNPs, Insertions, Deletions, Indels, 
                   `SNP Transitions/Transversions`, `Phased Genotypes`) %>% 
+    mutate(coverage = round(coverage, 2)) %>% 
     mutate(coverage_nonN = round(coverage_nonN, 2)) %>% 
     mutate(frac_coding = round(frac_coding, 2)) %>% 
     gather("key", "value", -hgref) %>% 
@@ -100,6 +102,7 @@ highconf_summary_metrics %>%
 __Table Value Descriptions__  
 
 - Number of bases in highconf regions (chromosomes 1-22) (nbases)    
+- Fraction of total bases covered in chromosomes 1-22) (coverage)  
 - Fraction of non-N bases covered in chromosomes 1-22) (coverage_nonN)  
 - Fraction of RefSeq coding sequence covered (frac_coding)  
 - Total number of calls in highconf regions (total_calls_in_highconf)  
@@ -125,33 +128,54 @@ metrics_df %>%
 
 # Han Chinese Trio Mendelian inheritance analysis
 ```{r}
-loadd(hc_trioincon_df)
-loadd(hc_denovo_df)
-violations_total <- nrow(hc_trioincon_df)
-violations_snps <- hc_trioincon_df %>% filter(snp == TRUE) %>% nrow()
-violations_indels <- hc_trioincon_df %>% filter(indel == TRUE) %>% nrow()
+loadd(hc_trioincon_37_df)
+loadd(hc_denovo_37_df)
+loadd(hc_trioincon_38_df)
+loadd(hc_denovo_38_df)
 
-denovo_total <- nrow(hc_denovo_df)
-denovo_snps <- hc_denovo_df %>% filter(snp == TRUE) %>% nrow()
-denovo_indels <- hc_denovo_df %>% filter(indel == TRUE) %>% nrow()
+get_trio_stats <- function(trioincon_df, denovo_df){
+    list(violations_total = nrow(trioincon_df),
+    violations_snps = trioincon_df %>% filter(snp == TRUE) %>% nrow(),
+    violations_indels = trioincon_df %>% filter(indel == TRUE) %>% nrow(),
+    denovo_total = nrow(denovo_df),
+    denovo_snps = denovo_df %>% filter(snp == TRUE) %>% nrow(),
+    denovo_indels = denovo_df %>% filter(indel == TRUE) %>% nrow())
+}
+
+grch37_trio <- get_trio_stats(hc_trioincon_37_df, hc_denovo_37_df)
+grch38_trio <- get_trio_stats(hc_trioincon_38_df, hc_denovo_38_df)
 ```
 
+## GRCh 37 Stats
 __Mendelian Violations__   
 
-Total: `r violations_total`   
-SNPs: `r violations_snps`  
-Indels: `r violations_indels`   
+Total: `r grch37_trio$violations_total`   
+SNPs: `r grch37_trio$violations_snps`  
+Indels: `r grch37_trio$violations_indels`   
 
 __De novo/ germ-line somatic mutations__  
 
-Total: `r denovo_total`   
-SNPs: `r denovo_snps`  
-Indels: `r denovo_indels`   
+Total: `r grch37_trio$denovo_total`   
+SNPs: `r grch37_trio$denovo_snps`  
+Indels: `r grch37_trio$denovo_indels`   
 
-## Manual curation results
+## GRCh38 Stats
+__Mendelian Violations__   
+
+Total: `r grch38_trio$violations_total`   
+SNPs: `r grch38_trio$violations_snps`  
+Indels: `r grch38_trio$violations_indels`   
+
+__De novo/ germ-line somatic mutations__  
+
+Total: `r grch38_trio$denovo_total`   
+SNPs: `r grch38_trio$denovo_snps`  
+Indels: `r grch38_trio$denovo_indels`
+
+## Manual curation results GRCh37
 1. Select 10 random variants (5 SNPs and 5 indels). Randomly selected variants from different chromosomes. 
 ```{r}
-denovo_df <- hc_denovo_df %>% 
+denovo_df <- hc_denovo_37_df %>% 
     mutate(var_type = if_else(indel == TRUE, "indel", "snp")) %>% 
     dplyr::select(-indel, -snp, -substitution) %>% 
     separate(vcf_rowname, into = c("chrom","position","ref","alt")) %>% 

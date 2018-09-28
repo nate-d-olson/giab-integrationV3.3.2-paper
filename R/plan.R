@@ -11,16 +11,16 @@ plan <- drake_plan(
     
     ## high confidence region coverage -----------------------------------------
     ## get non-N genome and chromosome sizes 
-    chrom_size_df = get_chrom_sizes(),
+    chrom_size_list = list(GRCh37 = get_chrom_sizes(genome = "hs37d5"),
+                           GRCh38 = get_chrom_sizes(genome = "GRCh38")),
     
     ## get coverage by chromosome
     hc_beds = get_file_list(input, type = "hc_bed"),
 
     hcr_cov_df = hc_beds %>%
         map_dfr(get_hc_cov,
-                chrom_lengths = chrom_size_df,
+                chrom_lengths_list = chrom_size_list,
                 .id = "hgref"),
-
 
     ## high confidence variants per genome
     hc_vcfs = get_file_list(input, type = "hc_vcf"),
@@ -38,10 +38,18 @@ plan <- drake_plan(
     hc_coding_df = hc_beds %>% 
         map_dfr(get_coding_seq_cov, refseq_coding_bed, .id = "hgref"),
     
-    ## Chinese trio mendelian analysis 
-    hc_trioincon_vcf = load_trio_vcf("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz"),
-    hc_trioincon_df = get_trio_inconsistent_df(hc_trioincon_vcf),
-    hc_denovo_df = get_denovo_df(hc_trioincon_vcf, hc_trioincon_df),
+    ## Chinese trio mendelian analysis -----------------------------------------
+    ## GRCh37
+    hc_trioincon_37_vcf = file_in("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz") %>% 
+        load_trio_vcf(),
+    hc_trioincon_37_df = get_trio_inconsistent_df(hc_trioincon_37_vcf),
+    hc_denovo_37_df = get_denovo_df(hc_trioincon_37_vcf, hc_trioincon_37_df),
+    
+    # GRCh38
+    hc_trioincon_38_vcf = file_in("data_hc/HG005_HG006_HG007_GRCh38_trioinconsistent.vcf.gz") %>% 
+        load_trio_vcf(),
+    hc_trioincon_38_df = get_trio_inconsistent_df(hc_trioincon_38_vcf),
+    hc_denovo_38_df = get_denovo_df(hc_trioincon_38_vcf, hc_trioincon_38_df),
     
     ## Benchmarking Results
     benchmark_dat = load_benchmarking_results("data_benchmarking"),
