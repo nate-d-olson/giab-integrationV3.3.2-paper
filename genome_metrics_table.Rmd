@@ -69,6 +69,7 @@ highconf_summary_metrics <- left_join(highconf_cov, coding_frac) %>%
 ```
 
 
+Summary statistics for HG001 - HG007 GRCh37 and GRCh38 benchmarking callsets and regions for Chromosomes 1 - 22. Bases (Gb) is the number of gigabases in the benchmarking regions. Total Cov is the fraction of the genome included in the benchmarking regions, includes Ns. Asm Cov is the fraction of assembled genome, non-N bases, in the benchmarking regions. Coding Cov is fraction of coding bases (RefSeq CDS) covered by benchmarking region. The number, types of variants, TiTv, and phased were calculated using the Real-Time Genomics vcfstat command for benchmarking variants in the benchmarking regions. Total Calls is the number of variant calls. SNPs, Insertions, Deletions, and Indels are the number of each variant type. Here indels are defined as block substitutions. TiTv is the SNP transition/ transversion ratio. Phased is the fraction of the locally or globally phased variant calls.
 
 ```{r}
 format_num <- function(val){
