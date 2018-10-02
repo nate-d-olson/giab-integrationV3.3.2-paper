@@ -6,3 +6,7 @@
 data_*
 .drake
 .httr-oauth
+
+## Knit documents
+*.html
+*.docx
