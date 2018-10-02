@@ -1,0 +1,102 @@
+---
+title: "V3.3.2 Genomic Summary Metrics"
+author: "Nate Olson"
+date: '`r Sys.Date()`'
+output: bookdown::word_document2
+---
+
+```{r echo = FALSE, message = FALSE}
+library(drake)
+library(tidyverse)
+```
+
+## Metric summary table for full genomes HG001 - HG007. 
+
+```{r message = FALSE}
+## Loading and tidying data
+loadd(hcr_cov_df)
+loadd(hc_var_df)
+loadd(hh_var_df)
+loadd(hc_coding_df)
+
+## Can add ti/tv, het/hom, and other stats from vcfstats
+hc_vcf_tidy <- hc_vcf_df %>% 
+    filter(Key %in% c("SNPs","Insertions","Deletions")) %>% 
+    mutate(chrom = if_else(chrom == "chr1-22", "genome", chrom),
+           Value = as.integer(Value)) %>% 
+    spread(Key, Value) %>% 
+    mutate(Indels = Insertions + Deletions)
+
+hh_vcf_tidy <- hh_vcf_df %>% 
+    filter(Key %in% c("SNPs","Insertions","Deletions")) %>% 
+    mutate(Key = paste0("hh", Key)) %>% 
+    mutate(chrom = if_else(chrom == "chr1-22", "genome", chrom),
+           Value = as.integer(Value)) %>% 
+    spread(Key, Value) %>% 
+    mutate(hhIndels = hhInsertions + hhDeletions)
+
+
+metrics_df <- left_join(hcr_cov_df, hc_vcf_tidy) %>% 
+    left_join(hh_vcf_tidy)
+
+## Combining metrics for summary table
+highconf_cov <- hcr_cov_df %>% 
+    filter(chrom == "genome") %>% 
+    dplyr::select(hgref, nbases, coverage, coverage_nonN) 
+
+highconf_calls <- hh_vcf_df %>% filter(Key %in% c("Passed Filters",
+                                "SNPs","Insertions","Deletions", 
+                                "Indels", "Phased Genotypes", 
+                                "SNP Transitions/Transversions")) %>% 
+    filter(chrom == "chr1-22") %>% 
+    mutate(Value = str_remove(Value, " \\(.*")) %>% 
+    spread(Key, Value) %>% 
+    dplyr::rename(total_calls = `Passed Filters`)
+
+calls_in_highconf <- hh_vcf_df %>% 
+    filter(Key %in% "Passed Filters") %>% 
+    filter(chrom == "chr1-22") %>% 
+    spread(Key, Value) %>% 
+    dplyr::rename(total_calls_in_highconf = `Passed Filters`)
+
+
+coding_frac <- hc_coding_df %>% 
+    filter(chrom == "genome") %>% 
+    dplyr::select(hgref, frac_coding)
+
+highconf_summary_metrics <- left_join(highconf_cov, coding_frac) %>%
+    left_join(calls_in_highconf) %>% left_join(highconf_calls)
+```
+
+
+
+```{r}
+format_num <- function(val){
+    formatC(as.integer(val), big.mark=",")
+}
+
+highconf_summary_metrics %>% 
+    dplyr::select(hgref, nbases, coverage, coverage_nonN, frac_coding,
+                  total_calls, SNPs, Insertions, Deletions, Indels, 
+                  `SNP Transitions/Transversions`, `Phased Genotypes`) %>% 
+    mutate(coverage = round(coverage, 2)) %>%
+    mutate(coverage_nonN = round(coverage_nonN, 2)) %>% 
+    mutate(frac_coding = round(frac_coding, 2)) %>% 
+    mutate(nbases = round(nbases/1000000000, 2)) %>% 
+    mutate(total_calls = format_num(total_calls),
+           SNPs = format_num(SNPs),
+           Insertions = format_num(Insertions),
+           Deletions = format_num(Deletions),
+           Indels = format_num(Indels)) %>% 
+    dplyr::rename(`Bases (Gb)` = nbases) %>% 
+    dplyr::rename(`Total Cov` = coverage) %>% 
+    dplyr::rename(`Asm Cov` = coverage_nonN) %>% 
+    dplyr::rename(`Coding Cov`= frac_coding) %>% 
+    dplyr::rename(`Total Calls` = total_calls) %>% 
+    dplyr::rename(`TiTv` = `SNP Transitions/Transversions`) %>% 
+    dplyr::rename(Phased = `Phased Genotypes`) %>% 
+    separate(hgref, c("Genome", "Reference"), sep = "_") %>% 
+    # tidyr::gather("key", "value", -hgref) %>% 
+    # spread(hgref, value) %>% 
+    knitr::kable(align = "llrrrrrrrrrrr") 
+```
