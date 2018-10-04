@@ -94,6 +94,7 @@ highconf_summary_metrics %>%
     dplyr::rename(`Asm Cov` = coverage_nonN) %>% 
     dplyr::rename(`Coding Cov`= frac_coding) %>% 
     dplyr::rename(`Total Calls` = total_calls) %>% 
+    dplyr::rename(Complex = Indels) %>% 
     dplyr::rename(`TiTv` = `SNP Transitions/Transversions`) %>% 
     dplyr::rename(Phased = `Phased Genotypes`) %>% 
     separate(hgref, c("Genome", "Reference"), sep = "_") %>% 
