@@ -102,3 +102,34 @@ highconf_summary_metrics %>%
     # spread(hgref, value) %>% 
     knitr::kable(align = "llrrrrrrrrrrr") 
 ```
+
+## Values for supplemtnal results
+Percent change in SNPs between GRCh37 and GRCh38
+```{r}
+highconf_summary_metrics %>% 
+    separate(hgref, c("Genome", "Reference"), sep = "_") %>% 
+    dplyr::select(Genome, Reference, SNPs) %>% 
+    mutate(SNPs = as.integer(SNPs)) %>% 
+    spread(Reference, SNPs) %>% 
+    mutate(GRCh38_lower_GRCh37 = (GRCh37 - GRCh38)/GRCh37 * 100)
+```
+
+```{r}
+highconf_summary_metrics %>% 
+    separate(hgref, c("Genome", "Reference"), sep = "_") %>% 
+    dplyr::select(Genome, Reference, Insertions, Deletions) %>% 
+    mutate(Indels = as.integer(Insertions) + as.integer(Deletions)) %>% 
+    dplyr::select(-Insertions, -Deletions) %>% 
+    spread(Reference, Indels) %>% 
+    mutate(GRCh38_lower_GRCh37 = (GRCh37 - GRCh38)/GRCh37 * 100)
+```
+
+```{r}
+highconf_summary_metrics %>% 
+    dplyr::select(hgref, coverage_nonN) %>% 
+    separate(hgref, c("Genome", "Reference"), sep = "_") %>% 
+    group_by(Reference) %>% 
+    summarise(min_cov = min(coverage_nonN),
+              max_cov = max(coverage_nonN))
+```
+
