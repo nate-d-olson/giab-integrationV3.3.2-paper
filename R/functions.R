@@ -266,6 +266,7 @@ load_trio_vcf <- function(trio_vcffile){
 }
 
 get_trio_inconsistent_df <- function(trioincon_vcf){
+    require(VariantAnnotation)
     ## Annotating Variant Type
     geno(trioincon_vcf)[["GT"]] %>% 
         data.frame(stringsAsFactors = FALSE) %>% 
@@ -279,6 +280,7 @@ get_trio_inconsistent_df <- function(trioincon_vcf){
 }
 
 get_denovo_df <- function(trioincon_vcf, trio_incon_df){
+    require(VariantAnnotation)
     geno(trioincon_vcf)[["GT"]] %>% 
         data.frame(stringsAsFactors = FALSE) %>% 
         rownames_to_column(var = "vcf_rowname") %>% 
