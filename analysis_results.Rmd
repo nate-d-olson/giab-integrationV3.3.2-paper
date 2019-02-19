@@ -25,8 +25,8 @@ Summary table and figures for the seven GIAB genomes.
 ```{r message = FALSE}
 ## Loading and tidying data
 loadd(hcr_cov_df)
-loadd(hc_var_df)
-loadd(hh_var_df)
+loadd(hc_vcf_df)
+loadd(hh_vcf_df)
 loadd(hc_coding_df)
 
 ## Can add ti/tv, het/hom, and other stats from vcfstats
