@@ -1,4 +1,5 @@
 ## Workflow plan
+library(drake)
 file.exists("inputs.csv")
 file.exists("bash/get_vcf_chrom_stats.sh")
 file.exists("bash/get_highhigh_vars.sh")
@@ -34,20 +35,20 @@ plan <- drake_plan(
     ## Refseq coding coverage file downloaded from
     ## https://github.com/ga4gh/benchmarking-tools/blob/master/resources/stratification-bed-files/FunctionalRegions/refseq_union_cds.sort.coordsonly.bed.gz
     refseq_coding_bed_list = list(grch37 = file_in("data_ref/refseq_union_cds.sort.coordsonly.bed.gz"),
-                             grch38 = file_in("data_ref/GRCh38_cds_merge.bed.gz")),
+                             grch38 = file_in("data_ref/GRCh38_refseq_cds_merged.bed.gz")),
     
     hc_coding_df = hc_beds %>% 
         map_dfr(get_coding_seq_cov, refseq_coding_bed_list, .id = "hgref"),
     
-    ## Chinese trio mendelian analysis -----------------------------------------
+    # ## Chinese trio mendelian analysis -----------------------------------------
     ## GRCh37
-    hc_trioincon_37_vcf = file_in("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz") %>% 
+    hc_trioincon_37_vcf = file_in("data_hc/HG005_HG006_HG007_trioinconsistent.vcf.gz") %>%
         load_trio_vcf(),
     hc_trioincon_37_df = get_trio_inconsistent_df(hc_trioincon_37_vcf),
     hc_denovo_37_df = get_denovo_df(hc_trioincon_37_vcf, hc_trioincon_37_df),
-    
+
     # GRCh38
-    hc_trioincon_38_vcf = file_in("data_hc/HG005_HG006_HG007_GRCh38_trioinconsistent.vcf.gz") %>% 
+    hc_trioincon_38_vcf = file_in("data_hc/HG005_HG006_HG007_GRCh38_trioinconsistent.vcf.gz") %>%
         load_trio_vcf(),
     hc_trioincon_38_df = get_trio_inconsistent_df(hc_trioincon_38_vcf),
     hc_denovo_38_df = get_denovo_df(hc_trioincon_38_vcf, hc_trioincon_38_df),
@@ -56,10 +57,10 @@ plan <- drake_plan(
     benchmark_dat = load_benchmarking_results("data_benchmarking"),
 
     ## Summary table benchmarking data
-    benchmark_summary_tbl = map_dfr(benchmark_dat, 
-                                    get_bench_summary_df, 
-                                    .id = "hgref"),
+    benchmark_summary_tbl = map_dfr(benchmark_dat,
+                                    get_bench_summary_df,
+                                    .id = "hgref") #,
     
     ## Additional Drake parameters
-    strings_in_dots = "literals"
+    # strings_in_dots = "literals"
 )

@@ -25,7 +25,7 @@ get_from_ftp <- function(ftp, filename = NULL){
         filename <- tempfile(fileext = file_ext)
     }
     
-    download.file(ftp, filename)
+    download.file(ftp, filename, method = "wget")
     
     filename
 }

@@ -1,5 +1,3 @@
-# Generating summary analysis and figures for giab integration pipeline V3.3.2 manuscript 
-library(drake)
 source("R/packages.R")  # Load all the packages you need.
 source("R/functions.R") # Load all the functions into your environment.
 source("R/plan.R")      # Build your workflow plan data frame.
@@ -9,4 +7,4 @@ source("R/plan.R")      # Build your workflow plan data frame.
 # vis_drake_graph(config)         # nolint
 
 # Now it is time to actually run your project.
-make(plan, jobs = 8) # Or make(my_plan, jobs = 2), etc.
+make(plan, jobs = 12) # Or make(my_plan, jobs = 2), etc.

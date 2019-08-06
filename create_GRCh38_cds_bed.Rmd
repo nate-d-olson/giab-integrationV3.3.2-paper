@@ -1,50 +1,216 @@
 ---
-title: "Make GRCh38 refcoding bed"
+title: "Generate GRCh38 refcoding bed"
 author: "Nate Olson"
-date: "10/1/2018"
-output: html_document
+date: '`r Sys.Date()`'
+output:
+  bookdown::pdf_document2:
+    toc: FALSE
 ---
 
+# Summary
+Generating a functional GRCh38 region stratification bed files for use in 
+variant benchmarking.
+
+# Loading packages and defining variables
 ```{r message = FALSE}
 library(tidyverse)
+ftbl_path <- paste0("ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq",
+                    "/vertebrate_mammalian/Homo_sapiens/",
+                    "latest_assembly_versions/GCF_000001405.39_GRCh38.p13/",
+                    "GCF_000001405.39_GRCh38.p13_feature_table.txt.gz")
+gff_path <- paste0("ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq",
+                    "/vertebrate_mammalian/Homo_sapiens/",
+                    "latest_assembly_versions/GCF_000001405.39_GRCh38.p13/",
+                    "GCF_000001405.39_GRCh38.p13_genomic.gff.gz")
 ```
 
-# Generating coding sequence file file for GRCh38 
-Using feature table from ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.38_GRCh38.p12/GCF_000001405.38_GRCh38.p12_feature_table.txt.gz 
+# Extracting CDS from RefSeq GFF
+
+## Getting Chromosome Assessions
+Using feature table to extract chromosome assessions. 
+Feature table downloaded from `r ftbl_path`.
+
 ```{r}
-tmp_file <- tempfile(fileext = ".gz")
-download.file(url = "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/reference/GCF_000001405.38_GRCh38.p12/GCF_000001405.38_GRCh38.p12_feature_table.txt.gz",
-              destfile = tmp_file,)
-feature_table <- read_tsv(tmp_file)
-```
-Extract CDS for chromosomes 1-22 and convert to 3 column table
-```{r}
-f_table_3col <- feature_table %>% 
-    filter(`# feature` == "CDS", chromosome %in% 1:22) %>% 
-    select(chromosome, start, end) %>% 
-    arrange(chromosome, start) %>% 
-    mutate(chrom = paste0("chr", chromosome)) %>% 
-    select(chrom, start, end) 
+ftbl_path <- paste0("ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq",
+                    "/vertebrate_mammalian/Homo_sapiens/",
+                    "latest_assembly_versions/GCF_000001405.39_GRCh38.p13/",
+                    "GCF_000001405.39_GRCh38.p13_feature_table.txt.gz")
+ftbl_md5 <- "706180c9786261f622d7e701dd9970e2"
+
+ftbl_file <- "GCF_000001405.39_GRCh38.p13_feature_table.txt.gz"
+if (!file.exists(ftbl_file)) {
+  download.file(url = ftbl_path, destfile = ftbl_file)
+  
+  ## MD5 check
+  dwn_md5 <- tools::md5sum(ftbl_file)
+
+  if(ftbl_md5 != dwn_md5){
+    warning("MD5 for downloaded feature table does not match expected MD5")
+  }
+}
+
+## defining column types and names
+ftbl_col_names <- read_lines(ftbl_file, n_max = 1) %>% 
+  str_split(pattern = "\t") %>% unlist()
+ftbl_col_types <- "cccccccddcclcccdlddc"
+
+feature_table <- read_tsv(ftbl_file, comment = "#",
+                          col_names = ftbl_col_names,
+                          col_types = ftbl_col_types)
+
+chrom_accn_df <- feature_table %>% 
+  dplyr::select(chromosome, genomic_accession, assembly_unit, seq_type) %>% 
+  distinct()
 ```
 
-Write to file
+
+## Downloading and Parsing GFF File
+Extracting RefSeq CDS from GFF file. 
+GFF file downloaded from `r gff_path`. 
+
 ```{r}
+gff_path <- paste0("ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq",
+                    "/vertebrate_mammalian/Homo_sapiens/",
+                    "latest_assembly_versions/GCF_000001405.39_GRCh38.p13/",
+                    "GCF_000001405.39_GRCh38.p13_genomic.gff.gz")
+gff_md5 <- "f0fdf5541ae4c37076e8db72a4a7fbd7"
+
+gff_file <- "GCF_000001405.39_GRCh38.p13_genomic.gff.gz"
+if (!file.exists(gff_file)) {
+  download.file(url = gff_path, destfile = gff_file)
+  
+  ## MD5 check
+  dwn_md5 <- tools::md5sum(gff_file)
+
+  if(gff_md5 != dwn_md5){
+    warning("MD5 for downloaded feature table does not match expected MD5")
+  }
+}
+
+## defining column types and names
+gff_table <- read_tsv(gff_file, col_names = c("seqid", "source", "type", "start", "end", 
+                              "score", "strand", "phase", "attributes"),
+                comment = "#")
+
+## Exon table with only RefSeq entries
+exon_table <- gff_table %>% 
+  filter(type == "CDS", 
+         grepl("RefSeq", source)) %>% 
+  rename(genomic_accession = seqid) %>% 
+  left_join(chrom_accn_df)
+
+## Extracting CDS for chromosomes and converting to 3 column table.
+exon_table_3col <- exon_table %>% 
+    filter(chromosome %in% c(1:22, "X", "Y", "MT"),
+           seq_type %in% c("chromosome","mitochondrion"),
+           assembly_unit %in% c("Primary Assembly", "non-nuclear"))%>% 
+    select(chromosome, start, end) %>%
+    ## Sorting table by chromosome and feature start position
+    arrange(chromosome, start) %>%
+    mutate(chrom = paste0("chr", chromosome)) %>%
+    select(chrom, start, end) %>% 
+  distinct()
+
+## Write to table as a bed file
 tmp_bed <- tempfile(fileext = ".bed")
-write_tsv(f_table_3col, tmp_bed, col_names = FALSE)
+write_tsv(exon_table_3col, tmp_bed, col_names = FALSE)
 ```
 
-Merge overlapping CDS and compress
+# Preparing Stratification Files
+Generating bed file with merged overlapping CDS regions as well as notin bed.
+See mappability documentation for how GRCh38 genome bed file was generated.
+
 ```{r}
-system2("bedtools", args = c("merge", "-i", tmp_bed), stdout = "data_ref/GRCh38_cds_merged.bed" )
-system2("bgzip", "data_ref/GRCh38_cds_merged.bed")
+merged_bed_file <- "GRCh38_refseq_cds_merged.bed"
+system2("bedtools", args = c("merge", "-i", tmp_bed), 
+        stdout = merged_bed_file)
+
+## Generating not-in bed 
+genome_bed_file <- "../mappability/human.hg38.chroms.only.genome.bed"
+notin_merged_bed_file <- "notin_GRCh38_refseq_cds_merged.bed"
+system2("subtractBed", args = c("-a", genome_bed_file, "-b", merged_bed_file),
+        stdout = notin_merged_bed_file) 
+
+## Compressing stratificaiton beds
+system2("bgzip", merged_bed_file)
+system2("bgzip", notin_merged_bed_file)
 ```
+
+# File Sanity Checks
+
+```{r}
+merged_bed <- read_tsv(paste0(merged_bed_file, ".gz"), 
+                       col_names = c("chrom","start","end"))
+total_cds <- sum(merged_bed$end - merged_bed$start)
+
+notin_merged_bed <- read_tsv(paste0(notin_merged_bed_file, ".gz"), 
+                       col_names = c("chrom","start","end"))
+notin_total_cds <- sum(notin_merged_bed$end - notin_merged_bed$start)
+```
+
+
+Number of bases in merged `r format(total_cds, big.mark = ",")`.  
+Number of bases not-in merged `r format(notin_total_cds, big.mark = ",")`.  
+Total bases (in + not-in) `r format(total_cds + notin_total_cds, big.mark = ",")`. 
+
+
+## Comparison of 38 to 37
+```{r}
+cds37_path <- file.path("../../benchmarking-tools/resources",
+                       "/stratification-bed-files/FunctionalRegions/",
+                       "refseq_union_cds.sort.bed.gz")
+cds_37 <- read_tsv(cds37_path,
+                   col_names = c("chrom", "start","end",
+                                 "info", "zero","strand"))
+                     
+merged_bed_37 <- cds_37 %>%  
+  filter(chrom %in% c(1:22, "X", "Y", "MT")) %>% 
+  select(chrom, start, end) %>% 
+  mutate(size = end - start,
+         chrom = paste0("chr", chrom)) %>% 
+  add_column(ref = "GRCh37")
+
+ref_comp <- merged_bed %>% 
+  mutate(size = end - start) %>% 
+  add_column(ref = "GRCh38") %>% 
+  bind_rows(merged_bed_37)
+```
+
+
+CDS size distributions for the two reference genomes is nearly identical.   
+
+```{r}
+ref_comp %>% ggplot() + 
+  geom_density(aes(x = size, 
+                   color = ref,
+                   fill = ref), 
+                   alpha = 0.25) + 
+  scale_x_log10() +
+  theme_bw()
+```
+
+
+
+Total CDS size by chromosome is similar between the two reference genomes. 
+```{r}
+ref_comp %>% 
+  group_by(ref, chrom) %>% 
+  summarise(total_size = sum(size)) %>% 
+  spread(ref, total_size) %>% 
+  mutate(size_diff = GRCh37 - GRCh38,
+         ratio_37_to_38 = GRCh37/GRCh38) %>% 
+  knitr::kable()
+```
+
+
 
 # System Information
 
 ```{r}
 s_info <- devtools::session_info()
 print(s_info$platform)
-s_info$packages %>% filter(`*` == "*") %>% dplyr::select(-`*`) %>% 
+s_info$packages %>% 
+  filter(attached) %>% dplyr::select(package, loadedversion, source) %>% 
       knitr::kable()
 ```
 
